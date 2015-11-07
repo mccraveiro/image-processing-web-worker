@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Image Processing with Web Workers</title>
+    <meta name="description" content="Image Processing with Web Workers">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="css/normalize.min.css">
+    <link rel="stylesheet" href="css/main.css">
+  </head>
+  <body>
+    <h1>Image Processing with Web Workers</h1>
+
+    <div class="row">
+      <label for="file">Choose a image:</label>
+      <input type="file" id="file" />
+    </div>
+    <div class="row">
+      <button id="original">Original</button>
+      <button id="grayscale">Grayscale</button>
+      <button id="meanBlur">Mean Blur</button>
+      <button id="gaussianBlur">Gaussian Blur</button>
+      <button id="meanBlurGrayscale">Grayscale + Mean Blur</button>
+      <button id="edges">Detect Edges</button>
+    </div>
+
+    <canvas id="result"></canvas>
+    <script src="js/main.js"></script>
+  </body>
+</html>

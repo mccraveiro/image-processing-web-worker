@@ -1,0 +1,18 @@
+{
+  "name": "image",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/main.source.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "./node_modules/browserify/bin/cmd.js js/src/main.js js/src/filters.js -o js/main.js -t [ babelify --presets [ es2015 ] ]"
+  },
+  "author": "Mateus Craveiro <mccraveiro@gmail.com>",
+  "dependencies": {
+    "babel": "^6.0.15",
+    "babel-cli": "^6.1.2",
+    "babel-preset-es2015": "^6.1.2",
+    "babelify": "^7.2.0",
+    "browserify": "^12.0.1"
+  }
+}
