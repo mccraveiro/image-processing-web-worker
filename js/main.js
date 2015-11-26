@@ -6,10 +6,14 @@ var _createClass = (function () { function defineProperties(target, props) { for
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.ImageToArray = ImageToArray;
+exports.ArrayToImage = ArrayToImage;
 
 var _filters = require('./filters');
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var mainWorker = new Worker('js/worker.js');
 
 var BaseImage = (function () {
   function BaseImage(file, callback) {
@@ -51,6 +55,29 @@ var BaseImage = (function () {
       this.img.onload = callback;
     }
   }, {
+    key: 'detectEdgesOnWorker',
+    value: function detectEdgesOnWorker(callback) {
+      var that = this;
+
+      mainWorker.onmessage = function (e) {
+        switch (e.data[0]) {
+          case 'Grayscale':
+            mainWorker.postMessage(['MeanBlur', e.data[1], that.height, that.width]);
+            break;
+          case 'MeanBlur':
+            mainWorker.postMessage(['DetectEdges', e.data[1], that.height, that.width]);
+            break;
+          case 'DetectEdges':
+            that.img = ArrayToImage(e.data[1], that.height, that.width);
+            that.img.onload = callback;
+            break;
+        }
+      };
+
+      var imageData = ImageToArray(this.originalImage);
+      mainWorker.postMessage(['Grayscale', imageData]);
+    }
+  }, {
     key: 'startTimer',
     value: function startTimer() {
       this.timer = {};
@@ -83,7 +110,6 @@ var BaseImage = (function () {
 })();
 
 exports.default = BaseImage;
-
 function ImageToArray(image) {
   var canvas = document.createElement('canvas');
   var context = canvas.getContext('2d');
@@ -262,39 +288,41 @@ var _baseImage2 = _interopRequireDefault(_baseImage);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var defaultImage = 'https://upload.wikimedia.org/wikipedia/en/2/24/Lenna.png';
-
 var fileInput = undefined,
     timer = undefined,
-    imageInfo = undefined,
-    currentImage = undefined;
+    imageInfo = undefined;
 
 function onload() {
-  document.body.style.cursor = 'wait';
   timer = document.getElementById('timer');
   imageInfo = document.getElementById('image-info');
   fileInput = document.getElementById('file');
 
   fileInput.addEventListener('change', function (e) {
-    document.body.style.cursor = 'wait';
     new _baseImage2.default(fileInput.files[0], runBenchmark);
   });
-
   // Load default image
   new _baseImage2.default(defaultImage, runBenchmark);
 }
 
 function runBenchmark(image) {
-  document.body.style.cursor = 'default';
-  var elapsedTime = undefined;
-
-  currentImage = image;
   draw(image, 'original-image');
   imageInfo.textContent = 'Image Dimensions: ' + image.height + 'px x ' + image.width + 'px';
   image.startTimer();
   image.detectEdges(function () {
-    elapsedTime = image.stopTimer();
+    var elapsedTime = image.stopTimer();
     timer.textContent = 'Elapsed time: ' + elapsedTime + 'ms';
     draw(image, 'result');
+
+    runBenchmarkOnWorker(image);
+  });
+}
+
+function runBenchmarkOnWorker(image) {
+  image.startTimer();
+  image.detectEdgesOnWorker(function () {
+    var elapsedTime = image.stopTimer();
+    console.log('Elapsed time on Worker: ' + elapsedTime + 'ms');
+    timer.insertAdjacentHTML('afterend', '<h2>Elapsed time on Worker: ' + elapsedTime + 'ms</h2>');
   });
 }
 
@@ -308,4 +336,4 @@ function draw(image, canvasID) {
 
 window.onload = onload;
 
-},{"./base-image":1}]},{},[3,2]);
+},{"./base-image":1}]},{},[3]);

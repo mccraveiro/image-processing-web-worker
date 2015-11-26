@@ -1,5 +1,7 @@
 import {Grayscale, MeanBlur, DetectEdges, GaussianBlur} from './filters';
 
+let mainWorker = new Worker('js/worker.js');
+
 export default class BaseImage {
   constructor(file, callback) {
     this.originalImage = new Image();
@@ -46,6 +48,28 @@ export default class BaseImage {
     this.img.onload = callback;
   }
 
+  detectEdgesOnWorker(callback) {
+    let that = this;
+
+    mainWorker.onmessage = function(e) {
+      switch (e.data[0]) {
+        case 'Grayscale':
+          mainWorker.postMessage(['MeanBlur', e.data[1], that.height, that.width]);
+          break;
+        case 'MeanBlur':
+          mainWorker.postMessage(['DetectEdges', e.data[1], that.height, that.width]);
+          break;
+        case 'DetectEdges':
+          that.img = ArrayToImage(e.data[1], that.height, that.width);
+          that.img.onload = callback;
+          break;
+      }
+    }
+
+    let imageData = ImageToArray(this.originalImage);
+    mainWorker.postMessage(['Grayscale', imageData]);
+  }
+
   startTimer() {
     this.timer = {};
     this.timer.start = performance.now();
@@ -57,7 +81,7 @@ export default class BaseImage {
   }
 }
 
-function ImageToArray(image) {
+export function ImageToArray(image) {
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   canvas.height = image.height;
@@ -67,7 +91,7 @@ function ImageToArray(image) {
   return imageData.data;
 }
 
-function ArrayToImage(data, height, width) {
+export function ArrayToImage(data, height, width) {
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   let image = new Image();

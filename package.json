@@ -5,7 +5,7 @@
   "main": "src/main.source.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "./node_modules/browserify/bin/cmd.js js/src/main.js js/src/filters.js -o js/main.js -t [ babelify --presets [ es2015 ] ]"
+    "build": "./node_modules/browserify/bin/cmd.js js/src/main.js -o js/main.js -t [ babelify --presets [ es2015 ] ] && ./node_modules/browserify/bin/cmd.js js/src/worker.js -o js/worker.js -t [ babelify --presets [ es2015 ] ]"
   },
   "author": "Mateus Craveiro <mccraveiro@gmail.com>",
   "dependencies": {
