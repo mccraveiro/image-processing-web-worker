@@ -11,21 +11,16 @@
     <link rel="stylesheet" href="css/main.css">
   </head>
   <body>
-    <h1>Image Processing with Web Workers</h1>
+    <h1>Edge Detection with Web Workers</h1>
 
     <div class="row">
       <label for="file">Choose a image:</label>
       <input type="file" id="file" />
     </div>
-    <div class="row">
-      <button id="original">Original</button>
-      <button id="grayscale">Grayscale</button>
-      <button id="meanBlur">Mean Blur</button>
-      <button id="gaussianBlur">Gaussian Blur</button>
-      <button id="meanBlurGrayscale">Grayscale + Mean Blur</button>
-      <button id="edges">Detect Edges</button>
-    </div>
+    <h2 id="image-info"></h2>
+    <h2 id="timer"></h2>
 
+    <canvas id="original-image"></canvas>
     <canvas id="result"></canvas>
     <script src="js/main.js"></script>
   </body>
