@@ -23,7 +23,7 @@ function runBenchmark(image) {
   image.startTimer();
   image.detectEdges(function () {
     let elapsedTime = image.stopTimer();
-    timer.textContent = `Elapsed time: ${elapsedTime}ms`;
+    timer.innerHTML = `Elapsed time: ${elapsedTime}ms`;
     draw(image, 'result');
 
     runBenchmarkOnWorker(image);
@@ -35,7 +35,7 @@ function runBenchmarkOnWorker(image) {
   image.detectEdgesOnWorker(function () {
     let elapsedTime = image.stopTimer();
     console.log(`Elapsed time on Worker: ${elapsedTime}ms`);
-    timer.insertAdjacentHTML('afterend', `<h2>Elapsed time on Worker: ${elapsedTime}ms</h2>`);
+    timer.innerHTML = timer.innerHTML + `<br/>Elapsed time on Worker: ${elapsedTime}ms`;
   });
 }
 
