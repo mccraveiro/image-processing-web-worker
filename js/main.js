@@ -398,7 +398,6 @@ function runBenchmarkOnWorker(image) {
     image.detectEdgesOnWorker(function () {
       var elapsedTime = image.stopTimer();
       timer.innerHTML = timer.innerHTML + ('<br/>Elapsed time (' + numberOfWorkers + ' workers): ' + elapsedTime + 'ms');
-      draw(image, 'result2');
       resolve();
     }, numberOfWorkers);
   });
