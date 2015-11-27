@@ -14,10 +14,20 @@ onmessage = function(e) {
       postMessage([e.data[0]]);
       break;
     case 'Grayscale':
-      postMessage([e.data[0], Grayscale(e.data[1], settings.initialIndex, settings.maxIndex)]);
+      postMessage([
+        e.data[0],
+        Grayscale(e.data[1], settings.initialIndex, settings.maxIndex),
+        settings.initialIndex,
+        settings.maxIndex
+      ]);
       break;
     case 'MeanBlur':
-      postMessage([e.data[0], MeanBlur(e.data[1], settings.height, settings.width, settings.initialIndex, settings.maxIndex)]);
+      postMessage([
+        e.data[0],
+        MeanBlur(e.data[1], settings.height, settings.width, settings.initialIndex, settings.maxIndex),
+        settings.initialIndex,
+        settings.maxIndex
+      ]);
       break;
     case 'DetectEdges':
       postMessage([

@@ -171,10 +171,10 @@ onmessage = function (e) {
       postMessage([e.data[0]]);
       break;
     case 'Grayscale':
-      postMessage([e.data[0], (0, _filters.Grayscale)(e.data[1], settings.initialIndex, settings.maxIndex)]);
+      postMessage([e.data[0], (0, _filters.Grayscale)(e.data[1], settings.initialIndex, settings.maxIndex), settings.initialIndex, settings.maxIndex]);
       break;
     case 'MeanBlur':
-      postMessage([e.data[0], (0, _filters.MeanBlur)(e.data[1], settings.height, settings.width, settings.initialIndex, settings.maxIndex)]);
+      postMessage([e.data[0], (0, _filters.MeanBlur)(e.data[1], settings.height, settings.width, settings.initialIndex, settings.maxIndex), settings.initialIndex, settings.maxIndex]);
       break;
     case 'DetectEdges':
       postMessage([e.data[0], (0, _filters.DetectEdges)(e.data[1], settings.height, settings.width, settings.initialIndex, settings.maxIndex), settings.initialIndex, settings.maxIndex]);

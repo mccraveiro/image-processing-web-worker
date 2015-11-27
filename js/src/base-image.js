@@ -55,41 +55,16 @@ export default class BaseImage {
   detectEdgesOnWorker(callback, numberOfWorkers = 1) {
     var that = this;
     var imageData = ImageToArray(this.originalImage);
-    var currentLength = 0;
-    var eachLength = Math.ceil((imageData.length / 4) / numberOfWorkers) * 4;
-    var finishedWorkers = 0;
-    var resultImage = imageData;
-
     if (numberOfWorkers > 12) numberOfWorkers = 12;
 
-    for (let i = 0; i < numberOfWorkers; i++) {
-      workers[i].onmessage = function(e) {
-        switch (e.data[0]) {
-          case 'Setup':
-            workers[i].postMessage(['Grayscale', imageData]);
-            break;
-          case 'Grayscale':
-            workers[i].postMessage(['MeanBlur', e.data[1]]);
-            break;
-          case 'MeanBlur':
-            workers[i].postMessage(['DetectEdges', e.data[1]]);
-            break;
-          case 'DetectEdges':
-            resultImage = combineImage(resultImage, e.data[1], e.data[2], e.data[3])
-            finishedWorkers++;
-
-            if (finishedWorkers === numberOfWorkers) {
-              that.img = ArrayToImage(resultImage, that.height, that.width);;
-              that.img.onload = callback;
-            }
-
-            break;
-        }
-      }
-
-      workers[i].postMessage(['Setup', that.height, that.width, currentLength, currentLength + eachLength]);
-      currentLength += eachLength;
-    }
+    setupWorkers(imageData, that.height, that.width, numberOfWorkers)
+    .then(executeOnWorkers.bind(this, numberOfWorkers, 'Grayscale'))
+    .then(executeOnWorkers.bind(this, numberOfWorkers, 'MeanBlur'))
+    .then(executeOnWorkers.bind(this, numberOfWorkers, 'DetectEdges'))
+    .then(function (result) {
+      that.img = ArrayToImage(result, that.height, that.width);
+      that.img.onload = callback;
+    });
   }
 
   startTimer() {
@@ -101,6 +76,55 @@ export default class BaseImage {
     this.timer.end = performance.now();
     return Math.round(this.timer.end - this.timer.start);
   }
+}
+
+function setupWorkers(imageData, height, width, numberOfWorkers) {
+  return new Promise(function(resolve, reject) {
+    var currentLength = 0;
+    var eachLength = Math.ceil((imageData.length / 4) / numberOfWorkers) * 4;
+    var finishedWorkers = 0;
+
+    for (let i = 0; i < numberOfWorkers; i++) {
+      workers[i].onmessage = function(e) {
+        if (e.data[0] !== 'Setup') {
+          return;
+        }
+
+        finishedWorkers++;
+
+        if (finishedWorkers === numberOfWorkers) {
+          resolve(imageData);
+        }
+      }
+
+      workers[i].postMessage(['Setup', height, width, currentLength, currentLength + eachLength]);
+      currentLength += eachLength;
+    }
+  });
+}
+
+function executeOnWorkers(numberOfWorkers, filter, imageData) {
+  return new Promise(function(resolve, reject) {
+    var finishedWorkers = 0;
+    var resultImage = imageData;
+
+    for (let i = 0; i < numberOfWorkers; i++) {
+      workers[i].onmessage = function(e) {
+        if (e.data[0] !== filter) {
+          return;
+        }
+
+        resultImage = combineImage(resultImage, e.data[1], e.data[2], e.data[3])
+        finishedWorkers++;
+
+        if (finishedWorkers === numberOfWorkers) {
+          resolve(resultImage);
+        }
+      }
+
+      workers[i].postMessage([filter, imageData]);
+    }
+  });
 }
 
 export function ImageToArray(image) {
