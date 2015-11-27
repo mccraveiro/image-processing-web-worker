@@ -1,6 +1,10 @@
 import {Grayscale, MeanBlur, DetectEdges, GaussianBlur} from './filters';
 
-let mainWorker = new Worker('js/worker.js');
+var workers = [];
+
+for (let i = 0; i < 12; i++) {
+  workers[i] = new Worker('js/worker.js');
+}
 
 export default class BaseImage {
   constructor(file, callback) {
@@ -48,26 +52,44 @@ export default class BaseImage {
     this.img.onload = callback;
   }
 
-  detectEdgesOnWorker(callback) {
-    let that = this;
+  detectEdgesOnWorker(callback, numberOfWorkers = 1) {
+    var that = this;
+    var imageData = ImageToArray(this.originalImage);
+    var currentLength = 0;
+    var eachLength = Math.ceil((imageData.length / 4) / numberOfWorkers) * 4;
+    var finishedWorkers = 0;
+    var resultImage = imageData;
 
-    mainWorker.onmessage = function(e) {
-      switch (e.data[0]) {
-        case 'Grayscale':
-          mainWorker.postMessage(['MeanBlur', e.data[1], that.height, that.width]);
-          break;
-        case 'MeanBlur':
-          mainWorker.postMessage(['DetectEdges', e.data[1], that.height, that.width]);
-          break;
-        case 'DetectEdges':
-          that.img = ArrayToImage(e.data[1], that.height, that.width);
-          that.img.onload = callback;
-          break;
+    if (numberOfWorkers > 12) numberOfWorkers = 12;
+
+    for (let i = 0; i < numberOfWorkers; i++) {
+      workers[i].onmessage = function(e) {
+        switch (e.data[0]) {
+          case 'Setup':
+            workers[i].postMessage(['Grayscale', imageData]);
+            break;
+          case 'Grayscale':
+            workers[i].postMessage(['MeanBlur', e.data[1]]);
+            break;
+          case 'MeanBlur':
+            workers[i].postMessage(['DetectEdges', e.data[1]]);
+            break;
+          case 'DetectEdges':
+            resultImage = combineImage(resultImage, e.data[1], e.data[2], e.data[3])
+            finishedWorkers++;
+
+            if (finishedWorkers === numberOfWorkers) {
+              that.img = ArrayToImage(resultImage, that.height, that.width);;
+              that.img.onload = callback;
+            }
+
+            break;
+        }
       }
-    }
 
-    let imageData = ImageToArray(this.originalImage);
-    mainWorker.postMessage(['Grayscale', imageData]);
+      workers[i].postMessage(['Setup', that.height, that.width, currentLength, currentLength + eachLength]);
+      currentLength += eachLength;
+    }
   }
 
   startTimer() {
@@ -101,4 +123,12 @@ export function ArrayToImage(data, height, width) {
   context.putImageData(imgdata, 0, 0);
   image.src = canvas.toDataURL();
   return image;
+}
+
+function combineImage(result, data, initialIndex, maxIndex) {
+  for (let i = initialIndex; i < maxIndex; i++) {
+    result[i] = data[i];
+  }
+
+  return result;
 }

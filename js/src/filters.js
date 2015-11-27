@@ -7,10 +7,12 @@ function wrap(value, max) {
   return value;
 }
 
-export function Grayscale(imageData) {
+export function Grayscale(imageData, initialIndex, maxIndex) {
   let i, average;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || imageData.length;
 
-  for (i = 0; i < imageData.length; i += 4) {
+  for (i = initialIndex; i < maxIndex; i += 4) {
     average = imageData[i] + imageData[i + 1] + imageData[i + 2];
     average = Math.round(average / 3);
 
@@ -22,12 +24,14 @@ export function Grayscale(imageData) {
   return imageData;
 }
 
-export function MeanBlur(imageData, height, width) {
+export function MeanBlur(imageData, height, width, initialIndex, maxIndex) {
   let length = imageData.length;
   let result = new Uint8ClampedArray(length);
   let i, average;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || length;
 
-  for (i = 0; i < length; i++) {
+  for (i = initialIndex; i < maxIndex; i++) {
     if ((i + 1) % 4 === 0) {
       result[i] = 255;
       continue;
@@ -52,14 +56,16 @@ export function MeanBlur(imageData, height, width) {
   return result;
 }
 
-export function GaussianBlur(imageData, height, width) {
+export function GaussianBlur(imageData, height, width, initialIndex, maxIndex) {
   let length = imageData.length;
   let result = new Uint8ClampedArray(length);
   let i, average;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || length;
 
   let kernel = [1, 2, 1, 2, 4, 2, 1, 2, 1];
 
-  for (i = 0; i < length; i++) {
+  for (i = initialIndex; i < maxIndex; i++) {
     if ((i + 1) % 4 === 0) {
       result[i] = 255;
       continue;
@@ -84,17 +90,19 @@ export function GaussianBlur(imageData, height, width) {
   return result;
 }
 
-export function DetectEdges(imageData, height, width) {
+export function DetectEdges(imageData, height, width, initialIndex, maxIndex) {
   let length = imageData.length;
   let resultHorizontal = new Uint8ClampedArray(length);
   let resultVertical = new Uint8ClampedArray(length);
   let result = new Uint8ClampedArray(length);
   let i, average;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || length;
 
   let horizontalKernel = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
   let verticalKernel = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
 
-  for (i = 0; i < length; i++) {
+  for (i = initialIndex; i < maxIndex; i++) {
     if ((i + 1) % 4 === 0) {
       result[i] = 255;
       continue;

@@ -17,11 +17,13 @@ function wrap(value, max) {
   return value;
 }
 
-function Grayscale(imageData) {
+function Grayscale(imageData, initialIndex, maxIndex) {
   var i = undefined,
       average = undefined;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || imageData.length;
 
-  for (i = 0; i < imageData.length; i += 4) {
+  for (i = initialIndex; i < maxIndex; i += 4) {
     average = imageData[i] + imageData[i + 1] + imageData[i + 2];
     average = Math.round(average / 3);
 
@@ -33,13 +35,15 @@ function Grayscale(imageData) {
   return imageData;
 }
 
-function MeanBlur(imageData, height, width) {
+function MeanBlur(imageData, height, width, initialIndex, maxIndex) {
   var length = imageData.length;
   var result = new Uint8ClampedArray(length);
   var i = undefined,
       average = undefined;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || length;
 
-  for (i = 0; i < length; i++) {
+  for (i = initialIndex; i < maxIndex; i++) {
     if ((i + 1) % 4 === 0) {
       result[i] = 255;
       continue;
@@ -64,15 +68,17 @@ function MeanBlur(imageData, height, width) {
   return result;
 }
 
-function GaussianBlur(imageData, height, width) {
+function GaussianBlur(imageData, height, width, initialIndex, maxIndex) {
   var length = imageData.length;
   var result = new Uint8ClampedArray(length);
   var i = undefined,
       average = undefined;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || length;
 
   var kernel = [1, 2, 1, 2, 4, 2, 1, 2, 1];
 
-  for (i = 0; i < length; i++) {
+  for (i = initialIndex; i < maxIndex; i++) {
     if ((i + 1) % 4 === 0) {
       result[i] = 255;
       continue;
@@ -97,18 +103,20 @@ function GaussianBlur(imageData, height, width) {
   return result;
 }
 
-function DetectEdges(imageData, height, width) {
+function DetectEdges(imageData, height, width, initialIndex, maxIndex) {
   var length = imageData.length;
   var resultHorizontal = new Uint8ClampedArray(length);
   var resultVertical = new Uint8ClampedArray(length);
   var result = new Uint8ClampedArray(length);
   var i = undefined,
       average = undefined;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || length;
 
   var horizontalKernel = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
   var verticalKernel = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
 
-  for (i = 0; i < length; i++) {
+  for (i = initialIndex; i < maxIndex; i++) {
     if ((i + 1) % 4 === 0) {
       result[i] = 255;
       continue;
@@ -149,16 +157,27 @@ function DetectEdges(imageData, height, width) {
 
 var _filters = require('./filters');
 
+var settings = {};
+
 onmessage = function (e) {
   switch (e.data[0]) {
+    case 'Setup':
+      settings = {
+        height: e.data[1],
+        width: e.data[2],
+        initialIndex: e.data[3],
+        maxIndex: e.data[4]
+      };
+      postMessage([e.data[0]]);
+      break;
     case 'Grayscale':
-      postMessage([e.data[0], (0, _filters.Grayscale)(e.data[1])]);
+      postMessage([e.data[0], (0, _filters.Grayscale)(e.data[1], settings.initialIndex, settings.maxIndex)]);
       break;
     case 'MeanBlur':
-      postMessage([e.data[0], (0, _filters.MeanBlur)(e.data[1], e.data[2], e.data[3])]);
+      postMessage([e.data[0], (0, _filters.MeanBlur)(e.data[1], settings.height, settings.width, settings.initialIndex, settings.maxIndex)]);
       break;
     case 'DetectEdges':
-      postMessage([e.data[0], (0, _filters.DetectEdges)(e.data[1], e.data[2], e.data[3])]);
+      postMessage([e.data[0], (0, _filters.DetectEdges)(e.data[1], settings.height, settings.width, settings.initialIndex, settings.maxIndex), settings.initialIndex, settings.maxIndex]);
       break;
   }
 };

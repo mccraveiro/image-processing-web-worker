@@ -13,7 +13,11 @@ var _filters = require('./filters');
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var mainWorker = new Worker('js/worker.js');
+var workers = [];
+
+for (var i = 0; i < 12; i++) {
+  workers[i] = new Worker('js/worker.js');
+}
 
 var BaseImage = (function () {
   function BaseImage(file, callback) {
@@ -57,25 +61,49 @@ var BaseImage = (function () {
   }, {
     key: 'detectEdgesOnWorker',
     value: function detectEdgesOnWorker(callback) {
-      var that = this;
+      var numberOfWorkers = arguments.length <= 1 || arguments[1] === undefined ? 1 : arguments[1];
 
-      mainWorker.onmessage = function (e) {
-        switch (e.data[0]) {
-          case 'Grayscale':
-            mainWorker.postMessage(['MeanBlur', e.data[1], that.height, that.width]);
-            break;
-          case 'MeanBlur':
-            mainWorker.postMessage(['DetectEdges', e.data[1], that.height, that.width]);
-            break;
-          case 'DetectEdges':
-            that.img = ArrayToImage(e.data[1], that.height, that.width);
-            that.img.onload = callback;
-            break;
-        }
+      var that = this;
+      var imageData = ImageToArray(this.originalImage);
+      var currentLength = 0;
+      var eachLength = Math.ceil(imageData.length / 4 / numberOfWorkers) * 4;
+      var finishedWorkers = 0;
+      var resultImage = imageData;
+
+      if (numberOfWorkers > 12) numberOfWorkers = 12;
+
+      var _loop = function _loop(i) {
+        workers[i].onmessage = function (e) {
+          switch (e.data[0]) {
+            case 'Setup':
+              workers[i].postMessage(['Grayscale', imageData]);
+              break;
+            case 'Grayscale':
+              workers[i].postMessage(['MeanBlur', e.data[1]]);
+              break;
+            case 'MeanBlur':
+              workers[i].postMessage(['DetectEdges', e.data[1]]);
+              break;
+            case 'DetectEdges':
+              resultImage = combineImage(resultImage, e.data[1], e.data[2], e.data[3]);
+              finishedWorkers++;
+
+              if (finishedWorkers === numberOfWorkers) {
+                that.img = ArrayToImage(resultImage, that.height, that.width);;
+                that.img.onload = callback;
+              }
+
+              break;
+          }
+        };
+
+        workers[i].postMessage(['Setup', that.height, that.width, currentLength, currentLength + eachLength]);
+        currentLength += eachLength;
       };
 
-      var imageData = ImageToArray(this.originalImage);
-      mainWorker.postMessage(['Grayscale', imageData]);
+      for (var i = 0; i < numberOfWorkers; i++) {
+        _loop(i);
+      }
     }
   }, {
     key: 'startTimer',
@@ -132,6 +160,14 @@ function ArrayToImage(data, height, width) {
   return image;
 }
 
+function combineImage(result, data, initialIndex, maxIndex) {
+  for (var i = initialIndex; i < maxIndex; i++) {
+    result[i] = data[i];
+  }
+
+  return result;
+}
+
 },{"./filters":2}],2:[function(require,module,exports){
 "use strict";
 
@@ -151,11 +187,13 @@ function wrap(value, max) {
   return value;
 }
 
-function Grayscale(imageData) {
+function Grayscale(imageData, initialIndex, maxIndex) {
   var i = undefined,
       average = undefined;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || imageData.length;
 
-  for (i = 0; i < imageData.length; i += 4) {
+  for (i = initialIndex; i < maxIndex; i += 4) {
     average = imageData[i] + imageData[i + 1] + imageData[i + 2];
     average = Math.round(average / 3);
 
@@ -167,13 +205,15 @@ function Grayscale(imageData) {
   return imageData;
 }
 
-function MeanBlur(imageData, height, width) {
+function MeanBlur(imageData, height, width, initialIndex, maxIndex) {
   var length = imageData.length;
   var result = new Uint8ClampedArray(length);
   var i = undefined,
       average = undefined;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || length;
 
-  for (i = 0; i < length; i++) {
+  for (i = initialIndex; i < maxIndex; i++) {
     if ((i + 1) % 4 === 0) {
       result[i] = 255;
       continue;
@@ -198,15 +238,17 @@ function MeanBlur(imageData, height, width) {
   return result;
 }
 
-function GaussianBlur(imageData, height, width) {
+function GaussianBlur(imageData, height, width, initialIndex, maxIndex) {
   var length = imageData.length;
   var result = new Uint8ClampedArray(length);
   var i = undefined,
       average = undefined;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || length;
 
   var kernel = [1, 2, 1, 2, 4, 2, 1, 2, 1];
 
-  for (i = 0; i < length; i++) {
+  for (i = initialIndex; i < maxIndex; i++) {
     if ((i + 1) % 4 === 0) {
       result[i] = 255;
       continue;
@@ -231,18 +273,20 @@ function GaussianBlur(imageData, height, width) {
   return result;
 }
 
-function DetectEdges(imageData, height, width) {
+function DetectEdges(imageData, height, width, initialIndex, maxIndex) {
   var length = imageData.length;
   var resultHorizontal = new Uint8ClampedArray(length);
   var resultVertical = new Uint8ClampedArray(length);
   var result = new Uint8ClampedArray(length);
   var i = undefined,
       average = undefined;
+  initialIndex = initialIndex || 0;
+  maxIndex = maxIndex || length;
 
   var horizontalKernel = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
   var verticalKernel = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
 
-  for (i = 0; i < length; i++) {
+  for (i = initialIndex; i < maxIndex; i++) {
     if ((i + 1) % 4 === 0) {
       result[i] = 255;
       continue;
@@ -287,7 +331,6 @@ var _baseImage2 = _interopRequireDefault(_baseImage);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var defaultImage = 'https://upload.wikimedia.org/wikipedia/en/2/24/Lenna.png';
 var fileInput = undefined,
     timer = undefined,
     imageInfo = undefined;
@@ -296,33 +339,51 @@ function onload() {
   timer = document.getElementById('timer');
   imageInfo = document.getElementById('image-info');
   fileInput = document.getElementById('file');
+  var example = document.getElementById('use-example');
 
   fileInput.addEventListener('change', function (e) {
-    new _baseImage2.default(fileInput.files[0], runBenchmark);
+    fileInput.disabled = true;
+    new _baseImage2.default(fileInput.files[0], run);
   });
-  // Load default image
-  new _baseImage2.default(defaultImage, runBenchmark);
+
+  example.addEventListener('click', function (e) {
+    e.preventDefault();
+    fileInput.disabled = true;
+    new _baseImage2.default('http://lh3.ggpht.com/-1VePI47ZHss/USzP3SPR42I/AAAAAAAABb0/7ID_koq3c3I/DSC06850.JPG?imgmax=800', run);
+  });
+}
+
+function run(image) {
+  runBenchmark(image).then(runBenchmarkOnWorker.bind(this, image, 1)).then(runBenchmarkOnWorker.bind(this, image, 2)).then(runBenchmarkOnWorker.bind(this, image, 4)).then(runBenchmarkOnWorker.bind(this, image, 6)).then(runBenchmarkOnWorker.bind(this, image, 8)).then(runBenchmarkOnWorker.bind(this, image, 10)).then(runBenchmarkOnWorker.bind(this, image, 12)).then(function () {
+    fileInput.disabled = false;
+  });
 }
 
 function runBenchmark(image) {
-  draw(image, 'original-image');
-  imageInfo.textContent = 'Image Dimensions: ' + image.height + 'px x ' + image.width + 'px';
-  image.startTimer();
-  image.detectEdges(function () {
-    var elapsedTime = image.stopTimer();
-    timer.innerHTML = 'Elapsed time: ' + elapsedTime + 'ms';
-    draw(image, 'result');
-
-    runBenchmarkOnWorker(image);
+  return new Promise(function (resolve, reject) {
+    draw(image, 'original-image');
+    imageInfo.textContent = 'Image Dimensions: ' + image.height + 'px x ' + image.width + 'px';
+    image.startTimer();
+    image.detectEdges(function () {
+      var elapsedTime = image.stopTimer();
+      timer.innerHTML = 'Elapsed time: ' + elapsedTime + 'ms';
+      draw(image, 'result');
+      resolve();
+    });
   });
 }
 
 function runBenchmarkOnWorker(image) {
-  image.startTimer();
-  image.detectEdgesOnWorker(function () {
-    var elapsedTime = image.stopTimer();
-    console.log('Elapsed time on Worker: ' + elapsedTime + 'ms');
-    timer.innerHTML = timer.innerHTML + ('<br/>Elapsed time on Worker: ' + elapsedTime + 'ms');
+  var numberOfWorkers = arguments.length <= 1 || arguments[1] === undefined ? 1 : arguments[1];
+
+  return new Promise(function (resolve, reject) {
+    image.startTimer();
+    image.detectEdgesOnWorker(function () {
+      var elapsedTime = image.stopTimer();
+      timer.innerHTML = timer.innerHTML + ('<br/>Elapsed time (' + numberOfWorkers + ' workers): ' + elapsedTime + 'ms');
+      draw(image, 'result2');
+      resolve();
+    }, numberOfWorkers);
   });
 }
 
